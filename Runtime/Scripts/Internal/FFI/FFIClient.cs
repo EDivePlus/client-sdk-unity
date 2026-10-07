@@ -107,6 +107,25 @@ namespace LiveKit.Internal.FFI
         {
             InitializeSdk();
         }
+
+        // With "Enter Play Mode Options" (domain reload disabled), statics survive between play
+        // sessions. Quit() runs on Application.quitting when leaving play mode, disposes the client
+        // and unregisters the reload handlers, so the next play session would drop every FFI event
+        // (_isDisposed stays true) and Room.Connect would time out. Re-arm the client here.
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ReinitializeOnEnterPlayMode()
+        {
+            if (!_isDisposed)
+                return;
+
+            _isDisposed = false;
+            AssemblyReloadEvents.beforeAssemblyReload -= OnBeforeAssemblyReload;
+            AssemblyReloadEvents.afterAssemblyReload -= OnAfterAssemblyReload;
+            AssemblyReloadEvents.beforeAssemblyReload += OnBeforeAssemblyReload;
+            AssemblyReloadEvents.afterAssemblyReload += OnAfterAssemblyReload;
+            InitializeSdk();
+            Utils.Debug("FFIServer - Reinitialized after play mode re-entry");
+        }
 #else
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void Init()
