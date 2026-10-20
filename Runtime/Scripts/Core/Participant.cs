@@ -645,19 +645,33 @@ namespace LiveKit
             if (e.AsyncId != _asyncId)
                 return;
 
-            IsError = !string.IsNullOrEmpty(e.Error);
-            IsDone = true;
+            if (!string.IsNullOrEmpty(e.Error) || e.Publication == null)
+            {
+                Error = string.IsNullOrEmpty(e.Error) ? "No publication returned" : e.Error;
+                IsError = true;
+                IsDone = true;
+                return;
+            }
+
             var publication = new LocalTrackPublication(e.Publication.Info, FfiHandle.FromOwnedHandle(e.Publication.Handle));
             publication.UpdateTrack(_localTrack as Track);
             _localTrack.UpdateSid(publication.Sid);
             _internalTracks.Add(e.Publication.Info.Sid, publication);
+            // Last, so a continuation sees the publication in the participant's tracks.
+            IsDone = true;
         }
 
         void OnCanceled()
         {
+            Error = "Canceled";
             IsError = true;
             IsDone = true;
         }
+
+        /// <summary>
+        /// The error message if the publish failed, otherwise null.
+        /// </summary>
+        public string Error { get; private set; }
     }
 
     public sealed class SetLocalMetadataInstruction : FfiInstruction<SetLocalMetadataCallback>
