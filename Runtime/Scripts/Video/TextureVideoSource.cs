@@ -14,6 +14,13 @@ namespace LiveKit
 
         public Texture Texture { get; }
 
+        /// <summary>
+        /// Flips the texture vertically before sending. On by default, which suits most platforms.
+        /// Turn it off when the remote side sees the video upside down, as with a camera
+        /// render texture on Android with Vulkan.
+        /// </summary>
+        public bool FlipVertically { get; set; } = true;
+
         public override int GetWidth()
         {
             return Texture.width;
@@ -76,7 +83,10 @@ namespace LiveKit
             // Vertically flip into an intermediate RT so the bytes AsyncGPUReadback produces are
             // top-down (WebRTC expects top-down; Unity render textures are bottom-up on macOS/Metal
             // and other GL-origin platforms).
-            Graphics.Blit(Texture, _flippedRT, new Vector2(1f, -1f), new Vector2(0f, 1f));
+            if (FlipVertically)
+                Graphics.Blit(Texture, _flippedRT, new Vector2(1f, -1f), new Vector2(0f, 1f));
+            else
+                Graphics.Blit(Texture, _flippedRT);
             Graphics.CopyTexture(_flippedRT, _previewTexture);
             AsyncGPUReadback.RequestIntoNativeArray(ref _captureBuffer, _flippedRT, 0, _textureFormat, OnReadback);
             return textureChanged;
