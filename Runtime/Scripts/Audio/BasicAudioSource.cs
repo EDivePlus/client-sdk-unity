@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using LiveKit.Proto;
 
 namespace LiveKit
 {
@@ -20,10 +21,13 @@ namespace LiveKit
         /// </summary>
         /// <param name="source">The <see cref="AudioSource"/> to capture from.</param>
         /// <param name="sourceType">The type of audio source.</param>
+        /// <param name="nativeOptions">The native source's voice processing; all on when null.
+        /// Turn it off for game or music audio.</param>
         /// <remarks>
         /// The sample rate and channel count are taken from Unity's audio configuration.
         /// </remarks>
-        public BasicAudioSource(AudioSource source, RtcAudioSourceType sourceType = RtcAudioSourceType.AudioSourceCustom) : base(sourceType)
+        public BasicAudioSource(AudioSource source, RtcAudioSourceType sourceType = RtcAudioSourceType.AudioSourceCustom,
+            AudioSourceOptions nativeOptions = null) : base(sourceType, 0, 0, null, nativeOptions)
         {
             _source = source;
         }

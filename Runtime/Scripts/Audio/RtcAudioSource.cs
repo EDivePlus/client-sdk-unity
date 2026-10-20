@@ -90,6 +90,16 @@ namespace LiveKit
             : this(audioSourceType, sampleRate, channels, null) { }
 
         protected RtcAudioSource(RtcAudioSourceType audioSourceType, uint sampleRate, uint channels, AudioProcessingOptions? processing)
+            : this(audioSourceType, sampleRate, channels, processing, null) { }
+
+        /// <summary>
+        /// Like the other constructors, and also sets the native source's own voice processing
+        /// (echo cancellation, noise suppression, gain control), which is all on by default. Turn it
+        /// off for sources that are not a voice, such as game or music audio, which it would
+        /// otherwise suppress.
+        /// </summary>
+        protected RtcAudioSource(RtcAudioSourceType audioSourceType, uint sampleRate, uint channels, AudioProcessingOptions? processing,
+            AudioSourceOptions nativeOptions)
         {
             _sourceType = audioSourceType;
             _onCaptureCallback = OnCaptureCallback;
@@ -112,9 +122,9 @@ namespace LiveKit
             newAudioSource.SampleRate = _expectedSampleRate;
 
             newAudioSource.Options = request.TempResource<AudioSourceOptions>();
-            newAudioSource.Options.EchoCancellation = true;
-            newAudioSource.Options.AutoGainControl = true;
-            newAudioSource.Options.NoiseSuppression = true;
+            newAudioSource.Options.EchoCancellation = nativeOptions?.EchoCancellation ?? true;
+            newAudioSource.Options.AutoGainControl = nativeOptions?.AutoGainControl ?? true;
+            newAudioSource.Options.NoiseSuppression = nativeOptions?.NoiseSuppression ?? true;
             using var response = request.Send();
             FfiResponse res = response;
             _info = res.NewAudioSource.Source.Info;
