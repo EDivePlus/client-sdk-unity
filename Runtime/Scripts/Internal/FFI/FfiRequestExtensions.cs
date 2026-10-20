@@ -187,6 +187,9 @@ namespace LiveKit.Internal.FFI
                 case LocalTrackMuteRequest localTrackMuteRequest:
                     ffiRequest.LocalTrackMute = localTrackMuteRequest;
                     break;
+                case SetTrackSubscriptionPermissionsRequest setTrackSubscriptionPermissionsRequest:
+                    ffiRequest.SetTrackSubscriptionPermissions = setTrackSubscriptionPermissionsRequest;
+                    break;
                 case EnableRemoteTrackRequest enableRemoteTrackRequest:
                     ffiRequest.EnableRemoteTrack = enableRemoteTrackRequest;
                     break;
