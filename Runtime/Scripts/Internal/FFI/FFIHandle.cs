@@ -14,7 +14,7 @@ namespace LiveKit.Internal.FFI
         [ReliabilityContract(Consistency.WillNotCorruptState, Cer.MayFail)]
         protected override bool ReleaseHandle()
         {
-            return NativeMethods.FfiDropHandle(handle);
+            return NativeMethods.FfiDropHandle((ulong)handle.ToInt64());
         }
 
         public static FfiHandle FromOwnedHandle(FfiOwnedHandle handle)

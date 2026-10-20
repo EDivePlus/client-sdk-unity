@@ -3,7 +3,7 @@ using System.Security;
 using System.Runtime.ConstrainedExecution;
 using System.Runtime.InteropServices;
 
-using FfiHandleId = System.IntPtr;
+using FfiHandleId = System.UInt64;
 
 namespace LiveKit.Internal.FFI
 {
@@ -24,7 +24,7 @@ namespace LiveKit.Internal.FFI
         internal extern static unsafe FfiHandleId FfiNewRequest(byte* data, int len, out byte* dataPtr, out UIntPtr dataLen);
 
         [DllImport(Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "livekit_ffi_initialize")]
-        internal extern static FfiHandleId LiveKitInitialize(FFICallbackDelegate cb, bool captureLogs, string sdk, string sdkVersion);
+        internal extern static void LiveKitInitialize(FFICallbackDelegate cb, bool captureLogs, string sdk, string sdkVersion);
 
 #if UNITY_ANDROID && !UNITY_EDITOR
         /// <summary>
