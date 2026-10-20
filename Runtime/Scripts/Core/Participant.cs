@@ -226,6 +226,27 @@ namespace LiveKit
         }
 
         /// <summary>
+        /// Sets who may subscribe to this participant's tracks. The server enforces it, so
+        /// participants that are not allowed never receive the media.
+        /// </summary>
+        /// <param name="allParticipantsAllowed">True lets every participant subscribe to every
+        /// track, and <paramref name="permissions"/> is ignored. False allows only the
+        /// participants listed in <paramref name="permissions"/>.</param>
+        /// <param name="permissions">Per participant identity: all tracks
+        /// (<see cref="ParticipantTrackPermission.AllowAll"/>), or only the track SIDs in
+        /// <see cref="ParticipantTrackPermission.AllowedTrackSids"/>.</param>
+        public void SetTrackSubscriptionPermissions(bool allParticipantsAllowed, IEnumerable<ParticipantTrackPermission> permissions = null)
+        {
+            using var request = FFIBridge.Instance.NewRequest<SetTrackSubscriptionPermissionsRequest>();
+            var setReq = request.request;
+            setReq.LocalParticipantHandle = (ulong)Handle.DangerousGetHandle();
+            setReq.AllParticipantsAllowed = allParticipantsAllowed;
+            if (permissions != null)
+                setReq.Permissions.AddRange(permissions);
+            using var response = request.Send();
+        }
+
+        /// <summary>
         /// Performs RPC on another participant in the room.
         /// This allows you to execute a custom method on a remote participant and await their response.
         /// </summary>
