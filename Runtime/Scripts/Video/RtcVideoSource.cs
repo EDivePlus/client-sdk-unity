@@ -217,6 +217,9 @@ namespace LiveKit
                  UnityEngine.Object.Destroy(_previewTexture);
             if (_captureBuffer.IsCreated)
             {
+                // A readback still writing into the buffer makes Dispose throw.
+                if (disposing && _reading)
+                    AsyncGPUReadback.WaitAllRequests();
                 Utils.Debug("Disposing capture buffer");
                 _captureBuffer.Dispose();
             }
