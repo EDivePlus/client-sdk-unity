@@ -103,8 +103,9 @@ namespace LiveKit
 		private void EnsureYuvPlaneTextures(int width, int height)
 		{
 			EnsurePlaneTexture(ref _planeY, width, height, TextureFormat.R8, FilterMode.Bilinear);
-			var chromaW = width / 2;
-			var chromaH = height / 2;
+			// I420 rounds the chroma planes up; rounding down skews the colors of odd-sized frames.
+			var chromaW = (width + 1) / 2;
+			var chromaH = (height + 1) / 2;
 			EnsurePlaneTexture(ref _planeU, chromaW, chromaH, TextureFormat.R8, FilterMode.Bilinear);
 			EnsurePlaneTexture(ref _planeV, chromaW, chromaH, TextureFormat.R8, FilterMode.Bilinear);
 		}

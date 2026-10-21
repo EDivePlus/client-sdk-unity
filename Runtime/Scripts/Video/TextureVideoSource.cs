@@ -73,6 +73,8 @@ namespace LiveKit
                 if (_captureBuffer.IsCreated)
                     _captureBuffer.Dispose();
                 _captureBuffer = new NativeArray<byte>(GetWidth() * GetHeight() * GetStrideForBuffer(_bufferType), Allocator.Persistent);
+                if (_previewTexture != null)
+                    UnityEngine.Object.Destroy(_previewTexture);
                 _previewTexture = new Texture2D(GetWidth(), GetHeight(), _textureFormat, false);
                 if (_flippedRT != null)
                 {
@@ -89,7 +91,9 @@ namespace LiveKit
                 Graphics.Blit(Texture, _flippedRT, new Vector2(1f, -1f), new Vector2(0f, 1f));
             else
                 Graphics.Blit(Texture, _flippedRT);
-            Graphics.CopyTexture(_flippedRT, _previewTexture);
+            // The preview only matters to TextureReceived listeners; skip the copy otherwise.
+            if (HasTextureListeners)
+                Graphics.CopyTexture(_flippedRT, _previewTexture);
             AsyncGPUReadback.RequestIntoNativeArray(ref _captureBuffer, _flippedRT, 0, _textureFormat, OnReadback);
             return textureChanged;
         }

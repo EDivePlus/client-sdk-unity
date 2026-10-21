@@ -30,6 +30,7 @@ namespace LiveKit
         public delegate void TextureReceiveDelegate(Texture2D tex2d);
         /// Called when we receive a new texture (first texture or the resolution changed)
         public event TextureReceiveDelegate TextureReceived;
+        protected bool HasTextureListeners => TextureReceived != null;
 
         public delegate FrameMetadata FrameMetadataDelegate();
         /// Invoked once per outgoing frame. Return null (default) to send no metadata.
@@ -161,6 +162,14 @@ namespace LiveKit
         protected virtual bool SendFrame()
         {
             var result = _requestPending && !_disposed;
+            // The source was resized after this buffer was read: sending it at the new size
+            // would read past its end. Drop the frame; the next read uses the new size.
+            if (result && _captureBuffer.Length != GetWidth() * GetHeight() * GetStrideForBuffer(_bufferType))
+            {
+                _reading = false;
+                _requestPending = false;
+                return false;
+            }
             if (result)
             {
                 var buffer = new VideoBufferInfo();
