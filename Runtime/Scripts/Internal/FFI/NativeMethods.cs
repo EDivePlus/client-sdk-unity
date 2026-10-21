@@ -18,13 +18,14 @@ namespace LiveKit.Internal.FFI
 
         [DllImport(Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "livekit_ffi_drop_handle")]
         [ReliabilityContract(Consistency.WillNotCorruptState, Cer.MayFail)]
+        [return: MarshalAs(UnmanagedType.U1)]
         internal extern static bool FfiDropHandle(FfiHandleId handleId);
 
         [DllImport(Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "livekit_ffi_request")]
         internal extern static unsafe FfiHandleId FfiNewRequest(byte* data, int len, out byte* dataPtr, out UIntPtr dataLen);
 
         [DllImport(Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "livekit_ffi_initialize")]
-        internal extern static void LiveKitInitialize(FFICallbackDelegate cb, bool captureLogs, string sdk, string sdkVersion);
+        internal extern static void LiveKitInitialize(FFICallbackDelegate cb, [MarshalAs(UnmanagedType.U1)] bool captureLogs, string sdk, string sdkVersion);
 
 #if UNITY_ANDROID && !UNITY_EDITOR
         /// <summary>
@@ -37,6 +38,7 @@ namespace LiveKit.Internal.FFI
         /// <returns>true if context initialization succeeded, false otherwise.
         /// Note: JVM initialization happens regardless of return value.</returns>
         [DllImport(Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "livekit_ffi_initialize_android_context")]
+        [return: MarshalAs(UnmanagedType.U1)]
         internal extern static bool LiveKitInitializeAndroidContext(IntPtr javaVmPtr, IntPtr contextPtr);
 #endif
     }
