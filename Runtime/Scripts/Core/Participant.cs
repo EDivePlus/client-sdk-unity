@@ -99,11 +99,12 @@ namespace LiveKit
             using var request = FFIBridge.Instance.NewRequest<UnpublishTrackRequest>();
             var unpublish = request.request;
             unpublish.LocalParticipantHandle = (ulong)Handle.DangerousGetHandle();
-            unpublish.StopOnUnpublish = false;
+            unpublish.StopOnUnpublish = stopOnUnpublish;
             unpublish.TrackSid = localTrack.Sid;
             var instruction = new UnpublishTrackInstruction(request.RequestAsyncId);
             using var response = request.Send();
-            _tracks.Remove(localTrack.Sid);
+            if (_tracks.Remove(localTrack.Sid, out var publication))
+                ((LocalTrackPublication)publication).DisposePublicationHandle();
             return instruction;
         }
 

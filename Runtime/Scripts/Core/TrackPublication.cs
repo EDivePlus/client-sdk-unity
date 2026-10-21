@@ -109,5 +109,11 @@ namespace LiveKit
             base.DisposeHandles();
             Handle?.Dispose();
         }
+
+        // On unpublish: the track stays with the caller, who may publish it again.
+        internal void DisposePublicationHandle()
+        {
+            Handle?.Dispose();
+        }
     }
 }
