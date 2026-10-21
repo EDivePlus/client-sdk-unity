@@ -74,6 +74,10 @@ namespace LiveKit
             _probe = _audioSource.gameObject.AddComponent<AudioProbe>();
             _probe.AudioRead += OnAudioRead;
             _audioSource.Play();
+            // A probe from a stream disposed earlier this frame is destroyed at the end of the frame,
+            // and Unity stops the source while it rebuilds the filter chain. Start it again after that.
+            if (MonoBehaviourContext.CanRunCoroutines)
+                MonoBehaviourContext.RunCoroutine(ReplayAfterFrame());
 
             // Subscribe to application pause events to handle background/foreground transitions
             MonoBehaviourContext.OnApplicationPauseEvent += OnApplicationPause;
@@ -85,6 +89,15 @@ namespace LiveKit
 
             // FFI stream creation is deferred to the first OnAudioRead. We subscribe to
             // AudioStreamEventReceived only after the stream exists (CreateFfiStream).
+        }
+
+        private System.Collections.IEnumerator ReplayAfterFrame()
+        {
+            // Two frames, so it also works when started outside the player loop.
+            yield return null;
+            yield return null;
+            if (!_disposed && _audioSource && !_audioSource.isPlaying)
+                _audioSource.Play();
         }
 
         // Called on the main thread (posted from OnAudioRead via FfiClient._context) when
