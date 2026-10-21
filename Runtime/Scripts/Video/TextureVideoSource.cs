@@ -70,6 +70,8 @@ namespace LiveKit
                 var compatibleFormat = SystemInfo.GetCompatibleFormat(Texture.graphicsFormat, FormatUsage.ReadPixels);
                 _textureFormat = GraphicsFormatUtility.GetTextureFormat(compatibleFormat);
                 _bufferType = GetVideoBufferType(_textureFormat);
+                if (_captureBuffer.IsCreated)
+                    _captureBuffer.Dispose();
                 _captureBuffer = new NativeArray<byte>(GetWidth() * GetHeight() * GetStrideForBuffer(_bufferType), Allocator.Persistent);
                 _previewTexture = new Texture2D(GetWidth(), GetHeight(), _textureFormat, false);
                 if (_flippedRT != null)
