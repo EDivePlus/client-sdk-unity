@@ -66,6 +66,9 @@ namespace LiveKit
 
         private bool _started = false;
         private volatile bool _disposed = false;
+        // Held by the audio thread for each block and by Dispose, so the handle and the processing
+        // stage are never released while a block is being processed or sent.
+        private readonly object _captureLock = new object();
         private int _audioReadCount = 0;
         private int _sentFrameCount = 0;
 
@@ -216,7 +219,15 @@ namespace LiveKit
 
         private void OnAudioRead(float[] data, int channels, int sampleRate)
         {
-            if (_disposed) return;
+            lock (_captureLock)
+            {
+                if (_disposed) return;
+                CaptureBlock(data, channels, sampleRate);
+            }
+        }
+
+        private void CaptureBlock(float[] data, int channels, int sampleRate)
+        {
             // A muted block still runs through the processing stage so the echo canceller keeps
             // seeing the near end next to its reference; SendProcessedFrame drops the output.
             // Without a processing stage there is nothing to keep warm.
@@ -339,9 +350,12 @@ namespace LiveKit
 
             if (disposing) Stop();
 
-            _processor?.Dispose(disposing);
-            Handle?.Dispose();
-            _disposed = true;
+            lock (_captureLock)
+            {
+                _disposed = true;
+                _processor?.Dispose(disposing);
+                Handle?.Dispose();
+            }
             Utils.Debug($"{DebugTag} disposed");
         }
 

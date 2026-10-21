@@ -149,6 +149,12 @@ namespace LiveKit
 
             lock (_lock)
             {
+                if (_disposed)
+                {
+                    Array.Clear(data, 0, data.Length);
+                    return;
+                }
+
                 // Single gate covering first-create and runtime format changes (e.g. after a
                 // system audio device switch). When the FFI stream is missing or what we asked
                 // Rust for no longer matches what Unity is delivering, post a (re)create to the
@@ -346,19 +352,18 @@ namespace LiveKit
         // Called on FFI callback thread       
         private void OnAudioStreamEvent(AudioStreamEvent e)
         {
-            if (_disposed)
-                return;
-
-            if ((ulong)Handle.DangerousGetHandle() != e.StreamHandle)
-                return;
-
             if (e.MessageCase != AudioStreamEvent.MessageOneofCase.FrameReceived)
                 return;
 
-            using var frame = new AudioFrame(e.FrameReceived.Frame);
-
             lock (_lock)
             {
+                // The handle is read under the lock: Dispose clears it on the main thread while
+                // this runs on the FFI callback thread, which can still fire after unsubscribing.
+                if (_disposed || _handle == null || (ulong)_handle.DangerousGetHandle() != e.StreamHandle)
+                    return;
+
+                using var frame = new AudioFrame(e.FrameReceived.Frame);
+
                 // _pendingFfiRequest gates writes during a (re)create: between the moment
                 // OnAudioRead detects a format mismatch and the swap landing, Rust is still
                 // emitting frames at the OLD format. Drop them to avoid corrupting the buffer.
@@ -400,6 +405,8 @@ namespace LiveKit
 
             lock (_lock)
             {
+                _disposed = true;
+
                 // Native resources can be released on both the explicit-dispose and finalizer
                 // paths. Unity objects are only touched when Dispose() is called explicitly on the
                 // main thread.
@@ -420,8 +427,6 @@ namespace LiveKit
                 _handle?.Dispose();
                 _handle = null;
             }
-
-            _disposed = true;
         }
 
         ~AudioStream()

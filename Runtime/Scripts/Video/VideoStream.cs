@@ -15,6 +15,8 @@ namespace LiveKit
         public delegate void TextureUploadDelegate();
 
         internal readonly FfiHandle Handle;
+        // Frames arrive on the FFI callback thread; the id is compared there without touching Handle.
+        private readonly ulong _handleId;
         private VideoStreamInfo _info;
         private bool _disposed = false;
         private bool _dirty = false;
@@ -64,6 +66,7 @@ namespace LiveKit
             using var response = request.Send();
             FfiResponse res = response;
             Handle = FfiHandle.FromOwnedHandle(res.NewVideoStream.Stream.Handle);
+            _handleId = (ulong)Handle.DangerousGetHandle();
             FfiClient.Instance.VideoStreamEventReceived += OnVideoStreamEvent;
         }
 
@@ -90,6 +93,8 @@ namespace LiveKit
 
             lock (_frameLock)
             {
+                _disposed = true;
+
                 // Native frame buffers are not Unity objects, so always release them even on the
                 // finalizer path. This keeps the stream from leaking native frame handles if user
                 // code forgets to call Dispose().
@@ -111,7 +116,6 @@ namespace LiveKit
             }
 
             Handle.Dispose();
-            _disposed = true;
         }
 
         public virtual void Start()
@@ -189,13 +193,10 @@ namespace LiveKit
             yield break;
         }
 
-        // Handle new video stream events
+        // Called on the FFI callback thread.
         private void OnVideoStreamEvent(VideoStreamEvent e)
         {
-            if (_disposed)
-                return;
-
-            if (e.StreamHandle != (ulong)Handle.DangerousGetHandle())
+            if (e.StreamHandle != _handleId)
                 return;
 
             if (e.MessageCase != VideoStreamEvent.MessageOneofCase.FrameReceived)
@@ -214,18 +215,10 @@ namespace LiveKit
                 return;
             }
 
-            // If there is no active consumer, keep draining frames from Rust but drop them
-            // immediately on the Unity side to avoid growing native memory or preserving stale
-            // frames. The producer queue can be size 1, bounded N, or unbounded; this behavior is
-            // correct for all three because Unity only wants the most recent renderable frame.
-            if (!_playing)
-            {
-                buffer.Dispose();
-                return;
-            }
-
             lock (_frameLock)
             {
+                // With no active consumer, keep draining frames from Rust but drop them right away
+                // so no native memory or stale frame is kept.
                 if (_disposed || !_playing)
                 {
                     buffer.Dispose();
@@ -240,11 +233,16 @@ namespace LiveKit
                 _dirty = true;
             }
 
-            // Avoid allocating VideoFrame objects when nobody is observing them.
+            // Avoid allocating VideoFrame objects when nobody is observing them. Handlers keep
+            // running on the main thread, as before.
             if (FrameReceived != null)
             {
                 var frame = new VideoFrame(frameInfo, e.FrameReceived.TimestampUs, e.FrameReceived.Rotation, e.FrameReceived.Metadata);
-                FrameReceived.Invoke(frame);
+                FfiClient.Instance._context?.Post(_ =>
+                {
+                    if (!_disposed)
+                        FrameReceived?.Invoke(frame);
+                }, null);
             }
         }
     }

@@ -382,9 +382,17 @@ namespace LiveKit.Internal.FFI
 
             if (_isDisposed) return;
 
-            var respData = new Span<byte>(data.ToPointer()!, (int)size.ToUInt64());
-            var response = FfiEvent.Parser!.ParseFrom(respData);
-            RouteFfiEvent(response);
+            // Runs on a native thread: an exception escaping here aborts the process on IL2CPP.
+            try
+            {
+                var respData = new Span<byte>(data.ToPointer()!, (int)size.ToUInt64());
+                var response = FfiEvent.Parser!.ParseFrom(respData);
+                RouteFfiEvent(response);
+            }
+            catch (Exception e)
+            {
+                Utils.Error($"FFI callback failed: {e}");
+            }
         }
 
         // Routing logic split out from FFICallback so tests can drive it from a
@@ -399,6 +407,15 @@ namespace LiveKit.Internal.FFI
             if (response.MessageCase == FfiEvent.MessageOneofCase.AudioStreamEvent)
             {
                 Instance.AudioStreamEventReceived?.Invoke(response.AudioStreamEvent!);
+                return;
+            }
+
+            // Video frames are handled here too. VideoStream keeps only the newest frame under its
+            // own lock; posting them instead would queue every frame, each holding a native
+            // buffer, for as long as the main thread is stalled.
+            if (response.MessageCase == FfiEvent.MessageOneofCase.VideoStreamEvent)
+            {
+                Instance.VideoStreamEventReceived?.Invoke(response.VideoStreamEvent!);
                 return;
             }
 
